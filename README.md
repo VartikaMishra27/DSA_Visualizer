@@ -1,1 +1,1 @@
-# DSA_Visualizer
+# DSA_Visualizer make searching and shorting easy to understant
