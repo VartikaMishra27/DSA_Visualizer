@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive DSA Visualizer — Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #0b0b0f;
+      --panel: rgba(255,255,255,0.06);
+      --panel-2: rgba(255,255,255,0.08);
+      --text: #e8e9f3;
+      --brand: #7c3aed; /* violet-600 */
+      --brand-2: #22c55e; /* emerald-500 */
+      --accent: #38bdf8; /* sky-400 */
+      --danger: #f97316; /* orange-500 */
+      --muted: #9ca3af; /* gray-400 */
+      --ok: #10b981; /* green-500 */
+      --warning: #f59e0b; /* amber-500 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body {
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(124,58,237,0.25), transparent 60%),
+                  radial-gradient(1000px 500px at 90% 10%, rgba(56,189,248,0.15), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      margin: 0;
+      display: flex; flex-direction: column;
+    }
+    /* ======= NAVBAR ======= */
+    header {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(8px);
+      background: linear-gradient(to bottom, rgba(12,12,16,0.85), rgba(12,12,16,0.4));
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .nav {
+      max-width: 1100px; margin: 0 auto; padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px }
+    .logo {
+      width: 28px; height: 28px; display:grid; place-items:center; color:white;
+      background: conic-gradient(from 200deg, var(--brand), var(--accent));
+      border-radius: 10px; box-shadow: 0 8px 30px rgba(124,58,237,0.35);
+      font-size: 18px; font-weight: 900;
+    }
+    .nav-actions { display:flex; gap:8px; align-items:center }
+    .btn, select, input[type="text"], input[type="number"], textarea {
+      background: var(--panel); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text); padding: 10px 12px; border-radius: 12px; font-size: 14px;
+      outline: none; transition: .2s ease; backdrop-filter: blur(8px);
+    }
+    .btn:hover, select:hover, input[type="text"]:hover, input[type="number"]:hover { border-color: rgba(255,255,255,0.18) }
+    .btn { cursor: pointer; display:inline-flex; align-items:center; gap:8px }
+    .btn.primary { background: linear-gradient(to right, var(--brand), #9333ea); border: none }
+    .btn.success { background: linear-gradient(to right, var(--brand-2), #16a34a); border: none }
+    .btn.warning { background: linear-gradient(to right, var(--warning), #f97316); border: none }
+
+    /* ======= LAYOUT ======= */
+    main { max-width: 1100px; width: 100%; margin: 18px auto; padding: 0 16px; display:grid; grid-template-columns: 1fr; gap:16px }
+    @media (min-width: 980px){ main { grid-template-columns: 360px 1fr } }
+
+    .card { background: var(--panel-2); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35) }
+    .card h3 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
+
+    /* ======= CONTROLS ======= */
+    .controls { display:flex; flex-direction:column; gap:14px }
+    .row { display:flex; flex-direction:column; gap:6px }
+    .inline { display:flex; gap:8px; flex-wrap:wrap }
+    label { font-size: 12px; color: var(--muted) }
+    .chips { display:flex; gap:8px; flex-wrap:wrap }
+    .chip { background: rgba(255,255,255,0.06); padding:6px 10px; border:1px dashed rgba(255,255,255,0.12); border-radius:999px; font-size:12px; cursor:pointer }
+    .chip:hover { border-style: solid }
+
+    /* ======= VISUALIZER ======= */
+    .viz-wrap { height: 440px; border-radius: 16px; position: relative; overflow: hidden; }
+    .visualizer {
+      position:absolute; inset:0; display:flex; align-items:flex-end; gap:6px;
+      padding: 18px; background:
+        radial-gradient(600px 220px at 20% 0%, rgba(124,58,237,0.18), transparent 60%),
+        radial-gradient(600px 220px at 90% 0%, rgba(34,197,94,0.12), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .viz-grid::before{ /* subtle grid */
+      content:""; position:absolute; inset:0; background-image: linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 32px 32px, 32px 32px; mask-image: radial-gradient(80% 80% at 50% 80%, black, transparent);
+      pointer-events:none
+    }
+    .bar {
+      background: linear-gradient(180deg, rgba(56,189,248,0.95), rgba(124,58,237,0.9));
+      width: var(--bw, 20px);
+      border-radius: 10px 10px 0 0;
+      transition: height .28s cubic-bezier(.2,.8,.2,1), transform .28s, filter .2s;
+      box-shadow: 0 8px 18px rgba(56,189,248,.25);
+      transform-origin: bottom;
+      position: relative;
+    }
+    .bar.highlight { filter: saturate(1.35) brightness(1.15); box-shadow: 0 10px 28px rgba(212, 185, 29, 0.35) }
+    .bar::after{ /* value label */
+      content: attr(data-value);
+      position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+      font-size: 10px; color: var(--muted);
+    }
+
+    .legend { position:absolute; top:12px; right:12px; display:flex; gap:8px; }
+    .pill { font-size:11px; padding:6px 10px; border-radius:999px; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12) }
+
+    .status { position:absolute; left:16px; bottom:14px; font-size:12px; color: var(--muted) }
+
+    /* ======= TIMELINE / PLAYER ======= */
+    .player { display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:11px; padding:4px 8px; border-radius:8px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12) }
+    input[type="range"]{ width: 100% }
+
+    /* ======= TOAST ======= */
+    .toast { position: fixed; inset-inline: 0; bottom: 18px; margin: 0 auto; width: fit-content; max-width: calc(100% - 24px);
+      background: linear-gradient(90deg, rgba(124,58,237,.95), rgba(56,189,248,.95)); color:white; padding: 12px 16px; border-radius: 999px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.35); transform: translateY(24px); opacity: 0; transition:.35s; z-index:9999 }
+    .toast.show{ transform: translateY(0); opacity: 1 }
+
+    /* ======= CONFETTI ======= */
+    .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden }
+    .piece { position:absolute; width:8px; height:14px; background: var(--brand); opacity:.9; border-radius:2px; animation: fall 1600ms linear forwards }
+    @keyframes fall{ to { transform: translateY(100vh) rotate(600deg); opacity:.8 } }
+
+    /* ======= FOOTER ======= */
+    footer { border-top:1px solid rgba(255,255,255,0.08); margin-top: 18px }
+    .footer-inner { max-width:1100px; margin:0 auto; padding: 18px 16px; display:flex; justify-content:space-between; color: var(--muted); font-size: 13px }
+  </style>
+</head>
+<body>
+  <!-- ======= NAVBAR ======= -->
+  <header>
+    <div class="nav">
+      <div class="brand"><div class="logo">∑</div> <span>Interactive DSA Visualizer</span></div>
+      <div class="nav-actions">
+        <button class="btn" id="themeToggle" title="Toggle theme">🌙</button>
+        <a class="btn" id="githubBtn" href="#" target="_blank" title="GitHub">⭐ Star</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ======= CONTROL PANEL ======= -->
+    <section class="card">
+      <h3>Controls</h3>
+      <div class="controls">
+        <div class="row">
+          <label>Enter array (comma separated)</label>
+          <input type="text" id="arrayInput" placeholder="e.g. 5,3,8,1,2" />
+          <div class="chips">
+            <span class="chip" data-set="random">🎲 Random (10)</span>
+            <span class="chip" data-set="nearly">↗ Nearly Sorted</span>
+            <span class="chip" data-set="reversed">↘ Reversed</span>
+            <span class="chip" data-set="dupes">≡ With Duplicates</span>
+          </div>
+        </div>
+        <div class="inline">
+          <div class="row" style="flex:1">
+            <label>Choose algorithm</label>
+            <select id="algorithm">
+              <option value="bubble">Bubble Sort</option>
+              <option value="selection">Selection Sort</option>
+              <option value="insertion">Insertion Sort</option>
+              <option value="merge">Merge Sort</option>
+              <option value="quick">Quick Sort</option>
+              <option value="linear">Linear Search</option>
+              <option value="binary">Binary Search</option>
+            </select>
+          </div>
+          <div class="row" style="width:180px">
+            <label>Search value</label>
+            <input type="number" id="searchValue" placeholder="e.g. 8" />
+          </div>
+        </div>
+        <div class="inline">
+          <div class="row" style="flex:1">
+            <label>Animation speed (<span id="speedLabel">1.0x</span>)</label>
+            <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1" />
+          </div>
+          <div class="row" style="width:210px">
+            <label>Bar width</label>
+            <input type="range" id="barWidth" min="8" max="42" step="1" value="20" />
+          </div>
+          <div class="row" style="width:200px">
+            <label style="visibility:hidden">x</label>
+            <div class="inline">
+              <button class="btn" id="pauseBtn">⏸ Pause</button>
+              <button class="btn success" id="resumeBtn">▶ Resume</button>
+            </div>
+          </div>
+        </div>
+        <div class="inline">
+          <button class="btn primary" id="startBtn">⚡ Start</button>
+          <button class="btn" id="shuffleBtn">🔀 Shuffle</button>
+          <button class="btn warning" id="clearBtn">🗑 Clear</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======= VISUALIZER ======= -->
+    <section class="card viz-wrap viz-grid">
+      <div class="visualizer" id="visualizer"></div>
+      <div class="legend">
+        <span class="pill">Active: <b>gold</b></span>
+        <span class="pill">Sorted: <b>brighter</b></span>
+      </div>
+      <div class="status" id="status">Ready.</div>
+    </section>
+
+    <!-- ======= PLAYER ======= -->
+    <section class="card">
+      <h3>Tips & Shortcuts</h3>
+      <div class="player">
+        <span class="kbd">R</span> reset &middot; <span class="kbd">Space</span> pause/resume &middot; Try different presets and speeds.
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">Hello</div>
+  <div id="confetti" class="confetti" aria-hidden="true"></div>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© <span id="year"></span> DSA Visualizer</span>
+      <span>Built for learning & engagement</span>
+    </div>
+  </footer>
+
+  <script>
+    // ==========================
+    // Professional shell
+    // ==========================
+    const $ = (sel) => document.querySelector(sel);
+    const statusEl = $('#status');
+    const viz = $('#visualizer');
+    const toastEl = $('#toast');
+    const confettiEl = $('#confetti');
+    const SPEED_EL = $('#speed');
+    const BAR_WIDTH_EL = $('#barWidth');
+
+    let SPEED = 1; // 1x
+    let PAUSED = false;
+
+    function setStatus(t){ statusEl.textContent = t }
+
+    function showToast(msg){
+      toastEl.textContent = msg; toastEl.classList.add('show');
+      setTimeout(()=> toastEl.classList.remove('show'), 2200);
+    }
+
+    // Replace blocking alert() with a toast
+    window.alert = function(msg){ showToast(msg) }
+
+    // Simple confetti burst
+    function celebrate(){
+      confettiEl.innerHTML = '';
+      const colors = ['#22c55e','#38bdf8','#7c3aed','#eab308','#f97316'];
+      for(let i=0;i<80;i++){
+        const d = document.createElement('div');
+        d.className = 'piece';
+        d.style.left = Math.random()*100 + 'vw';
+        d.style.background = colors[i%colors.length];
+        d.style.animationDelay = (Math.random()*300)+'ms';
+        confettiEl.appendChild(d);
+        setTimeout(()=> d.remove(), 2000);
+      }
+    }
+
+    // Pause-aware sleep
+    async function sleep(ms){
+      const target = ms / Math.max(0.25, SPEED);
+      const start = performance.now();
+      while (performance.now() - start < target){
+        // wait in small chunks so pause can break in
+        const remaining = target - (performance.now() - start);
+        await new Promise(r=> setTimeout(r, Math.min(remaining, 25)) );
+        while(PAUSED) { await new Promise(r=> setTimeout(r, 50)) }
+      }
+    }
+
+    // Draw array bars — keeps your highlight contract the same
+    function drawArray(arr, highlight = -1) {
+      viz.innerHTML = '';
+      const maxVal = Math.max(...arr, 1);
+      arr.forEach((val, i) => {
+        const bar = document.createElement('div');
+        bar.className = 'bar' + (i === highlight ? ' highlight' : '');
+        bar.style.setProperty('--bw', BAR_WIDTH_EL.value + 'px');
+        bar.style.height = (Math.max(0,val) / maxVal) * 100 + '%';
+        bar.dataset.value = val;
+        viz.appendChild(bar);
+      });
+      setStatus(highlight >= 0 ? `Comparing index ${highlight}` : `Bars: ${arr.length}`);
+    }
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if (e.code === 'KeyR'){ e.preventDefault(); clearAll(); }
+      if (e.code === 'Space'){ e.preventDefault(); PAUSED = !PAUSED; showToast(PAUSED ? 'Paused' : 'Resumed'); }
+      if (e.code === 'ArrowUp'){ SPEED = Math.min(3, (Number(SPEED_EL.value)+0.25)); SPEED_EL.value = SPEED; $('#speedLabel').textContent = SPEED.toFixed(2)+'x' }
+      if (e.code === 'ArrowDown'){ SPEED = Math.max(0.25, (Number(SPEED_EL.value)-0.25)); SPEED_EL.value = SPEED; $('#speedLabel').textContent = SPEED.toFixed(2)+'x' }
+    });
+
+    // UI handlers
+    SPEED_EL.addEventListener('input', e=> { SPEED = Number(e.target.value); $('#speedLabel').textContent = SPEED.toFixed(2)+'x' })
+    BAR_WIDTH_EL.addEventListener('input', ()=> {
+      document.querySelectorAll('.bar').forEach(b=> b.style.setProperty('--bw', BAR_WIDTH_EL.value + 'px'));
+    })
+
+    $('#themeToggle').addEventListener('click', ()=> document.body.classList.toggle('light'))
+
+    $('#shuffleBtn').addEventListener('click', ()=>{
+      const vals = getArrayFromInput();
+      for (let i = vals.length - 1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [vals[i], vals[j]] = [vals[j], vals[i]] }
+      $('#arrayInput').value = vals.join(',');
+      drawArray(vals)
+    })
+
+    $('#clearBtn').addEventListener('click', clearAll)
+    function clearAll(){ $('#arrayInput').value=''; drawArray([]); setStatus('Cleared. Enter a new array.'); }
+
+    document.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', ()=>{
+      const t = ch.getAttribute('data-set');
+      let a = [];
+      switch(t){
+        case 'random': a = Array.from({length:10},()=> Math.floor(Math.random()*90)+10); break;
+        case 'nearly': a = Array.from({length:12},(_,i)=> i*5 + (Math.random()<.2? -6: 0)); break;
+        case 'reversed': a = Array.from({length:12},(_,i)=> (12-i)*7); break;
+        case 'dupes': a = [5,3,5,2,8,3,9,1,2,5,8]; break;
+      }
+      $('#arrayInput').value = a.join(',');
+      drawArray(a);
+    }))
+
+    $('#startBtn').addEventListener('click', startVisualization)
+    $('#pauseBtn').addEventListener('click', ()=> { PAUSED = true; showToast('Paused') })
+    $('#resumeBtn').addEventListener('click', ()=> { PAUSED = false; showToast('Resumed') })
+
+    $('#year').textContent = new Date().getFullYear();
+
+    function getArrayFromInput(){
+      const input = $('#arrayInput').value;
+      if (!input.trim()) return [];
+      const arr = input.split(',').map(n => Number(n.trim()));
+      return arr.filter(n => !Number.isNaN(n));
+    }
+
+    // ==========================
+    // YOUR ORIGINAL LOGIC (kept the same)
+    // ==========================
+
+    async function bubbleSort(arr) {
+      for (let i = 0; i < arr.length - 1; i++) {
+        for (let j = 0; j < arr.length - i - 1; j++) {
+          drawArray(arr, j);
+          await sleep(200);
+          if (arr[j] > arr[j + 1]) {
+            [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+          }
+        }
+      }
+      drawArray(arr);
+    }
+
+    async function selectionSort(arr) {
+      for (let i = 0; i < arr.length; i++) {
+        let min = i;
+        for (let j = i + 1; j < arr.length; j++) {
+          drawArray(arr, j);
+          await sleep(200);
+          if (arr[j] < arr[min]) min = j;
+        }
+        [arr[i], arr[min]] = [arr[min], arr[i]];
+      }
+      drawArray(arr);
+    }
+
+    async function insertionSort(arr) {
+      for (let i = 1; i < arr.length; i++) {
+        let key = arr[i];
+        let j = i - 1;
+
+        while (j >= 0 && arr[j] > key) {
+          arr[j + 1] = arr[j];
+          drawArray(arr, j);
+          await sleep(200);
+          j--;
+        }
+        arr[j + 1] = key;
+        drawArray(arr, i);
+        await sleep(200);
+      }
+      drawArray(arr);
+    }
+
+    async function mergeSort(arr) {
+      async function merge(left, right) {
+        let result = [];
+        while (left.length && right.length) {
+          drawArray([...result, ...left, ...right]);
+          await sleep(300);
+          if (left[0] < right[0]) result.push(left.shift());
+          else result.push(right.shift());
+        }
+        return [...result, ...left, ...right];
+      }
+
+      async function sort(arr) {
+        if (arr.length <= 1) return arr;
+        const mid = Math.floor(arr.length / 2);
+        const left = await sort(arr.slice(0, mid));
+        const right = await sort(arr.slice(mid));
+        return await merge(left, right);
+      }
+
+      const sorted = await sort(arr);
+      drawArray(sorted);
+    }
+
+    async function quickSort(arr, low = 0, high = arr.length - 1) {
+      async function partition(arr, low, high) {
+        let pivot = arr[high];
+        let i = low;
+        for (let j = low; j < high; j++) {
+          drawArray(arr, j);
+          await sleep(200);
+          if (arr[j] < pivot) {
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+            i++;
+          }
+        }
+        [arr[i], arr[high]] = [arr[high], arr[i]];
+        return i;
+      }
+
+      if (low < high) {
+        let pi = await partition(arr, low, high);
+        await quickSort(arr, low, pi - 1);
+        await quickSort(arr, pi + 1, high);
+      }
+      drawArray(arr);
+    }
+
+    async function linearSearch(arr, target) {
+      for (let i = 0; i < arr.length; i++) {
+        drawArray(arr, i);
+        await sleep(300);
+        if (arr[i] === target) {
+          alert("Value found at index: " + i);
+          return;
+        }
+      }
+      alert("Value not found");
+      drawArray(arr);
+    }
+
+    async function binarySearch(arr, target) {
+      arr.sort((a, b) => a - b);
+      drawArray(arr);
+      let left = 0, right = arr.length - 1;
+
+      while (left <= right) {
+        let mid = Math.floor((left + right) / 2);
+        drawArray(arr, mid);
+        await sleep(500);
+
+        if (arr[mid] === target) {
+          alert("Value found at index: " + mid);
+          return;
+        } else if (arr[mid] < target) {
+          left = mid + 1;
+        } else {
+          right = mid - 1;
+        }
+      }
+      alert("Value not found");
+    }
+
+    // ==========================
+    // START FLOW (your function names kept)
+    // ==========================
+    async function startVisualization() {
+      const input = $('#arrayInput').value;
+      const algo = $('#algorithm').value;
+      const searchValue = Number($('#searchValue').value);
+
+      if (!input.trim()) { alert('Please enter a valid array.'); return; }
+
+      let arr = input.split(',').map(Number);
+      if (arr.some(isNaN)) { alert('Array must only contain numbers.'); return; }
+
+      PAUSED = false; setStatus('Running…');
+      const start = performance.now();
+
+      switch (algo) {
+        case 'bubble':
+          await bubbleSort(arr); break;
+        case 'selection':
+          await selectionSort(arr); break;
+        case 'insertion':
+          await insertionSort(arr); break;
+        case 'merge':
+          await mergeSort(arr); break;
+        case 'quick':
+          await quickSort(arr); break;
+        case 'linear':
+          await linearSearch(arr, searchValue); break;
+        case 'binary':
+          await binarySearch(arr, searchValue); break;
+        default: alert('Choose a valid algorithm.');
+      }
+
+      const ms = Math.round(performance.now() - start);
+      setStatus(`Done in ${ms} ms`);
+      celebrate();
+    }
+
+    // Initial state
+    $('#arrayInput').value = '42,11,7,90,23,15,5,61,3';
+    drawArray(getArrayFromInput());
+  </script>
+</body>
+</html>
